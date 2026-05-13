@@ -28,6 +28,39 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full picture.
 
 ---
 
+## One-click deploy (webhook half)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsantapong%2FKeepMessage&env=LINE_CHANNEL_SECRET,SUPABASE_URL,SUPABASE_SERVICE_KEY&envDescription=LINE%20channel%20secret%20%2B%20Supabase%20service-role%20credentials.%20See%20.env.example.&envLink=https%3A%2F%2Fgithub.com%2Fsantapong%2FKeepMessage%2Fblob%2Fmain%2F.env.example&project-name=line-mcp-webhook&repository-name=line-mcp-webhook&root-directory=webhook)
+
+This button deploys the **capture** half only (`webhook/`). The MCP **read + reply** half runs locally on your machine — not deployable to Vercel by design.
+
+**Before clicking, have these ready:**
+
+1. **LINE Official Account** — from [LINE Developers Console](https://developers.line.biz/console/), create a Provider + Messaging API channel and copy:
+   - `LINE_CHANNEL_SECRET` (Channel → Basic settings)
+   - `LINE_CHANNEL_ACCESS_TOKEN` (Channel → Messaging API tab) — not needed for the webhook deploy, but you'll need it for the MCP step.
+2. **Supabase project** — from [supabase.com](https://supabase.com), create a project and copy:
+   - `SUPABASE_URL` (Settings → API)
+   - `SUPABASE_SERVICE_KEY` (Settings → API → `service_role` key — keep secret)
+   - `SUPABASE_DB_URL` (Settings → Database → **Transaction Pooler URI, port 6543**) — for the MCP step.
+3. **Run the schema** against Supabase before sending traffic:
+   ```bash
+   psql "$SUPABASE_DB_URL" -f db/migrations/001_init.sql
+   ```
+
+**After Vercel finishes deploying:**
+
+1. Copy the deployment URL, e.g. `https://line-mcp-webhook-xxx.vercel.app`.
+2. In LINE Developers Console → your channel → Messaging API → **Webhook URL**, set:
+   `https://<your-vercel-app>.vercel.app/api/webhook`
+3. Click **Verify** in the LINE console — should return `Success`.
+4. Enable **Use webhook**, disable **Auto-reply messages** and **Greeting messages**.
+5. Add the bot as a friend on your phone (QR code in the console) and DM it. Check the `messages` table in Supabase — the row should land within ~2s.
+
+Full walkthrough: [`SETUP.md`](./SETUP.md).
+
+---
+
 ## Tech stack
 
 | Layer | Choice |
