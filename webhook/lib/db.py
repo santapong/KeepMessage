@@ -1,5 +1,6 @@
 """Supabase client for the webhook side."""
 
+import asyncio
 import os
 from typing import Any
 
@@ -17,15 +18,18 @@ def _get_client() -> Client:
     return _client
 
 
+def _upsert_sync(rows: list[dict[str, Any]]) -> None:
+    _get_client().table("messages").upsert(rows, on_conflict="message_id").execute()
+
+
 async def insert_messages(rows: list[dict[str, Any]]) -> None:
     """
     Insert message rows. Idempotent on message_id thanks to UNIQUE
     constraint — duplicates from LINE retries are silently skipped.
+
+    supabase-py is sync; offload to a thread so the ASGI event loop
+    stays responsive while the network roundtrip happens.
     """
     if not rows:
         return
-    client = _get_client()
-    # upsert with ignore_duplicates=True equivalent: rely on PG ON CONFLICT
-    # via a tiny RPC, OR insert and swallow unique-violation errors.
-    # Simplest path for v1: upsert with on_conflict='message_id'.
-    client.table("messages").upsert(rows, on_conflict="message_id").execute()
+    await asyncio.to_thread(_upsert_sync, rows)
