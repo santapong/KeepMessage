@@ -9,36 +9,49 @@ The `webhook/` directory is the Vercel project root. It contains a single Python
 ```
 webhook/
 ├── api/
-│   └── webhook.py          # FastAPI app — Vercel routes to this
+│   └── webhook.py          # FastAPI app — Vercel auto-routes to /api/webhook
 ├── lib/
 │   ├── line_verify.py      # HMAC verification
 │   ├── event_parser.py     # event JSON → DB row
 │   └── db.py               # Supabase client
 ├── requirements.txt
-└── vercel.json             # routing config
+├── .python-version         # pins Python runtime
+├── .vercelignore           # keeps the bundle small
+└── vercel.json             # function tuning (memory, maxDuration)
 ```
 
 ### vercel.json
 
+Modern Vercel auto-detects the Python entrypoint (`api/webhook.py` exporting an ASGI `app`) and routes `/api/webhook` to it. `vercel.json` only configures function-level limits.
+
 ```json
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/webhook.py", "use": "@vercel/python" }
-  ],
-  "routes": [
-    { "src": "/api/webhook", "dest": "api/webhook.py" }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/webhook.py": {
+      "maxDuration": 10,
+      "memory": 256,
+      "excludeFiles": "{**/__pycache__/**,**/*.pyc,**/.pytest_cache/**,**/test_*.py,**/*.test.py,tests/**}"
+    }
+  }
 }
+```
+
+### .python-version
+
+Pins the Python runtime so deploys are reproducible.
+
+```
+3.12
 ```
 
 ### requirements.txt
 
+The webhook only needs two runtime deps. `line-bot-sdk` lives in `mcp/`, not here — keeping this lean reduces cold-start time.
+
 ```
 fastapi==0.115.0
-line-bot-sdk==3.11.0
 supabase==2.7.4
-pydantic==2.9.0
 ```
 
 ### Environment variables
