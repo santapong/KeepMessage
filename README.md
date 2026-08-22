@@ -8,6 +8,10 @@
 
 ---
 
+## Quick start (working today)
+
+The [`local/`](local/) directory is a self-contained Node implementation that is live now: Tailscale Funnel → local receiver → `inbox.jsonl` → MCP tools in Claude Code (read, ack, send, status) with an offline auto-reply. See [local/README.md](local/README.md). The rest of this document describes the always-on Vercel + Supabase design.
+
 ## Architecture at a glance
 
 ```mermaid

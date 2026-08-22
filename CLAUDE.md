@@ -4,7 +4,7 @@ Personal LINE Official Account inbox, readable and replyable from Claude Desktop
 
 ## Status
 
-Code-complete scaffold. Phase 0 (external setup) is the open work — see [PROJECT-PLAN.md](PROJECT-PLAN.md). Repo is on GitHub at https://github.com/santapong/Line-MCP.
+**Working locally since 23 Aug 2026** via [local/](local/) (Node receiver + MCP on one machine, Tailscale Funnel). The Python/Vercel/Supabase halves below are the 24/7 upgrade path; Phase 0 (external setup) is still the open work for them — see [PROJECT-PLAN.md](PROJECT-PLAN.md). Repo is on GitHub at https://github.com/santapong/Line-MCP.
 
 ## Two halves of the system
 
@@ -68,6 +68,7 @@ cd webhook && vercel --prod
 ## Phase tracker
 
 - [x] Phase 0 — external accounts (LINE, Supabase, Vercel) — **owner: user, blocking everything else**
+- [x] Local path live (local/): webhook verified, inbox + read/send tools + offline auto-reply round-tripped
 - [ ] Phase 1 — webhook live, messages landing in Supabase
 - [ ] Phase 2 — MCP wired into Claude Desktop, read tools answering correctly
 - [ ] Phase 3 — push + profile send tools verified round-trip
