@@ -1,0 +1,4 @@
+node_modules/
+line-inbox.env
+inbox.jsonl
+.claude-alive
