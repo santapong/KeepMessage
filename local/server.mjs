@@ -29,6 +29,7 @@ const INBOX = path.join(dir, 'inbox.jsonl');
 if (!SECRET) console.error('WARNING: CHANNEL_SECRET not set - rejecting all webhooks');
 
 http.createServer((req, res) => {
+  res.on('finish', () => console.error(`${new Date().toISOString()} ${req.method} ${req.url} -> ${res.statusCode}`));
   if (req.method === 'GET' && req.url === '/health') { res.end('ok'); return; }
   if (req.method !== 'POST' || !req.url.startsWith('/webhook')) { res.statusCode = 404; res.end(); return; }
   const chunks = []; req.on('data', c => chunks.push(c));
