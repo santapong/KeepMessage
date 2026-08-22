@@ -44,7 +44,9 @@ http.createServer((req, res) => {
       const { events = [] } = JSON.parse(body.toString('utf8'));
       const now = new Date().toISOString();
       const online = claudeOnline();
+      const seenIds = new Set(fs.existsSync(INBOX) ? fs.readFileSync(INBOX,'utf8').split('\n').filter(Boolean).map(l=>{try{return JSON.parse(l).webhookEventId}catch{return null}}) : []);
       for (const ev of events) {
+        if (ev.webhookEventId && seenIds.has(ev.webhookEventId)) { console.error(`dup ${ev.webhookEventId} skipped`); continue; }
         fs.appendFileSync(INBOX, JSON.stringify({ receivedAt: now, read: false, autoReplied: !online, ...ev }) + '\n');
         if (!online) replyOffline(ev);
       }
