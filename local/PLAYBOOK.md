@@ -40,3 +40,19 @@ Lesson: **turn on Error statistics aggregation first** and read that page before
 
 ## Blocked-for-Claude actions (auto-mode classifier)
 `tailscale funnel`, `git push`, GitHub form submits, `rm -rf`, sudo — hand to the user as `! <cmd>`.
+
+## Link Vault (added 24 Aug 2026)
+Links sent to the OA are auto-saved, categorized, and come back as a daily LINE digest.
+
+Flow: LINE → line.draveniq.dev → server.mjs → `forwardToN8n()` (text msgs containing http(s) only, header `x-forward-token` = `N8N_FORWARD_TOKEN`) → Pi n8n webhook `https://santapong-dev.tail5c1b28.ts.net/webhook/line-link` → workflow **LINE Link Saver** (ID `LinkSaverLine001`): extract URLs + `#category` hashtag override → fetch title/og (fail-soft) → rule-based category (video/social/paper/code/robotics/learning/ai/inbox) → INSERT into Postgres.
+
+Store: DB `linkvault`, table `links` (url UNIQUE, title, summary, category, status unread|read|archived) in the Pi's pgvector container; user `linkvault` (password in `line-inbox.env.local-notes`, gitignored). NOTE: new DBs there must use `TEMPLATE template0` (template1 has a collation version mismatch).
+
+Digest: workflow **Daily Link Digest** (ID `DailyLinkDigest1`), cron 0 8 * * * Asia/Bangkok → SELECT unread → grouped message → LINE push. Links stay in the digest until marked read/archived (via a Claude session: `UPDATE links SET status='read' WHERE id=...`).
+
+Ops notes:
+- Workflows/credentials were imported via CLI (`docker exec n8n n8n import:workflow|import:credentials`, then `publish:workflow --id=...` + `docker restart n8n`). Webhook nodes NEED a `webhookId` uuid or activation silently skips registration ("unknown webhook").
+- Credential ids: `linkvaultpg01` (postgres), `linelinkfwd01` (x-forward-token), `linepushtok01` (LINE Bearer).
+- server.mjs env parser now accepts digits in var names (`[A-Z0-9_]+`).
+- Docker containers on the Pi use explicit DNS 1.1.1.1/8.8.8.8 (`/etc/docker/daemon.json`) — the router's DNS SERVFAILs from Docker's forwarder; symptom was "The DNS server returned an error" on api.line.me.
+- Pi host nginx (Serve→8080) died 18 Aug because `/var/log/nginx` was deleted; fix `sudo mkdir -p /var/log/nginx && sudo systemctl start nginx`. All n8n webhooks 502 when it's down.
