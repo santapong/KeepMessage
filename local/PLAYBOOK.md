@@ -56,3 +56,11 @@ Ops notes:
 - server.mjs env parser now accepts digits in var names (`[A-Z0-9_]+`).
 - Docker containers on the Pi use explicit DNS 1.1.1.1/8.8.8.8 (`/etc/docker/daemon.json`) — the router's DNS SERVFAILs from Docker's forwarder; symptom was "The DNS server returned an error" on api.line.me.
 - Pi host nginx (Serve→8080) died 18 Aug because `/var/log/nginx` was deleted; fix `sudo mkdir -p /var/log/nginx && sudo systemctl start nginx`. All n8n webhooks 502 when it's down.
+
+## Receiver moved to the Pi (24 Aug 2026, evening)
+Capture is now 24/7 — the laptop is out of the ingress path entirely.
+- Pi runs BOTH: `~/line-inbox-svc/server.mjs` (systemd user `line-inbox`, node 20 via apt) and `cloudflared-line` (same tunnel UUID, creds copied to Pi `~/.cloudflared/`). Laptop's `line-inbox` + `cloudflared-line` user units are disabled (they remain as instant fallback: disable Pi units, re-enable laptop ones).
+- server.mjs v2 adds a token-authed remote API on the same port: `GET /inbox`, `POST /ack`, `POST /heartbeat` (header `x-api-token` = `API_TOKEN` in the Pi env). mcp.mjs v2 (laptop) talks to it via `INBOX_API_URL=https://line.draveniq.dev` + `INBOX_API_TOKEN` — no local inbox file any more.
+- n8n forward is now Pi-local: `N8N_FORWARD_URL=http://127.0.0.1:8080/webhook/line-link` (through host nginx; no ts.net DNS dependency).
+- Pi user journald keeps no history (`journalctl --user` empty) — read logs with `systemctl --user status line-inbox`.
+- Duplicate links are silently deduped by the vault's UNIQUE(url) — resending a link is a no-op by design.

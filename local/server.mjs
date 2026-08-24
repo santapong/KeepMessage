@@ -39,11 +39,41 @@ async function forwardToN8n(ev) {
 }
 const PORT = Number(process.env.PORT || 18081);
 const INBOX = path.join(dir, 'inbox.jsonl');
+const API_TOKEN = process.env.API_TOKEN || '';
 if (!SECRET) console.error('WARNING: CHANNEL_SECRET not set - rejecting all webhooks');
+// remote-inbox API auth (MCP on another machine reads through the tunnel)
+const apiAuthed = (req) => {
+  if (!API_TOKEN) return false;
+  const got = String(req.headers['x-api-token'] || '');
+  return got.length === API_TOKEN.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(API_TOKEN));
+};
+const readBody = (req) => new Promise(r => { const c = []; req.on('data', d => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
+async function handleApi(req, res) {
+  if (!apiAuthed(req)) { res.statusCode = 401; res.end('unauthorized'); return true; }
+  if (req.method === 'GET' && req.url === '/inbox') {
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.end(fs.existsSync(INBOX) ? fs.readFileSync(INBOX) : ''); return true;
+  }
+  if (req.method === 'POST' && req.url === '/ack') {
+    let ids = null; try { ids = JSON.parse((await readBody(req)).toString('utf8') || '{}').ids || null; } catch {}
+    const set = ids && new Set(ids); let n = 0;
+    const all = fs.existsSync(INBOX) ? fs.readFileSync(INBOX,'utf8').split('\n').filter(Boolean).map(l=>JSON.parse(l)) : [];
+    const out = all.map(e => (!e.read && (!set || set.has(e.webhookEventId))) ? (n++, {...e, read:true}) : e);
+    fs.writeFileSync(INBOX, out.map(e=>JSON.stringify(e)).join('\n') + (out.length?'\n':''));
+    res.end(JSON.stringify({ marked: n })); return true;
+  }
+  if (req.method === 'POST' && req.url === '/heartbeat') {
+    fs.writeFileSync(HEARTBEAT, String(Date.now())); res.end('ok'); return true;
+  }
+  return false;
+}
 
 http.createServer((req, res) => {
   res.on('finish', () => console.error(`${new Date().toISOString()} ${req.method} ${req.url} -> ${res.statusCode}`));
   if (req.method === 'GET' && req.url === '/health') { res.end('ok'); return; }
+  if (req.url === '/inbox' || req.url === '/ack' || req.url === '/heartbeat') {
+    handleApi(req, res).then(h => { if (!h) { res.statusCode = 405; res.end(); } }); return;
+  }
   if (req.method !== 'POST' || !req.url.startsWith('/webhook')) { res.statusCode = 404; res.end(); return; }
   const chunks = []; req.on('data', c => chunks.push(c));
   req.on('end', () => {
