@@ -1,10 +1,10 @@
-# Playbook — local LINE inbox (state as of 23 Aug 2026, 01:05 ICT)
+# Playbook — local LINE inbox (state as of 24 Aug 2026, 14:50 ICT)
 
-## Where we parked
-- Receiver (`server.mjs`, systemd user unit `line-inbox`) + MCP (`mcp.mjs`, registered as `line-inbox`) work end-to-end: two round-trips proven ("Test" 17:22Z, "Hello" 17:46Z; replies pushed with `send_line_message` / `line-bot`).
-- LINE channel **Contractor @896soxdx** (provider `mcp`, channel id 2010934976): Use webhook ON, Webhook redelivery ON, Error statistics ON, OA-Manager auto-response OFF.
-- Public ingress was **Tailscale Funnel** `https://santapong.tail5c1b28.ts.net/webhook` — **being retired** (see Failure below). Turn it off: `sudo tailscale funnel off`.
-- Next ingress: **Cloudflare Tunnel** → `line.draveniq.dev` (`cloudflared` 2026.8.2 installed at `~/.local/bin/cloudflared`, not yet logged in).
+## Current state — Cloudflare Tunnel LIVE
+- Receiver (`server.mjs`, systemd user unit `line-inbox`) + MCP (`mcp.mjs`, registered as `line-inbox`) work end-to-end; verified again over the new ingress ("Test" 24 Aug 07:48Z stored via line.draveniq.dev).
+- LINE channel **Contractor @896soxdx** (provider `mcp`, channel id 2010934976): Use webhook ON, Webhook redelivery ON, Error statistics ON, OA-Manager auto-response OFF. Webhook URL = `https://line.draveniq.dev/webhook` (console Verify: Success, 24 Aug 2026).
+- Public ingress: **Cloudflare Tunnel** `line-inbox` (UUID `dad40729-b8dd-4743-a2b6-42a3e97fdd26`), config `~/.cloudflared/config.yml` → `http://127.0.0.1:18081`, systemd user unit `cloudflared-line.service` (enabled, Restart=always). CNAME `line.draveniq.dev` → tunnel.
+- Old **Tailscale Funnel** ingress retired — ensure it's off: `sudo tailscale funnel off` (user).
 
 ## Failure we hit (keep this)
 Messages stopped arriving while every local check passed (signed POST via public URL → 200, LINE console Verify → 200, LINE `POST /v2/bot/channel/webhook/test` → 200).
