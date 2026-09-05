@@ -1,4 +1,5 @@
 node_modules/
 line-inbox.env
+*.local-notes
 inbox.jsonl
 .claude-alive
