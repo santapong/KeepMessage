@@ -1,35 +1,48 @@
-# local/ — working LINE inbox MCP (Node, no cloud)
+# `local/` — live Pi LINE inbox
 
-Went live 23 Aug 2026. Same design as the Python/Vercel/Supabase halves in the parent repo,
-collapsed into two files that run on one machine:
+This is the production implementation of KeepMessage.
 
-| file | role |
+| File | Role |
 |---|---|
-| `server.mjs` | webhook receiver on 127.0.0.1:18081 — verifies `X-Line-Signature` (raw-body HMAC), appends events to `inbox.jsonl`, and sends an **offline auto-reply** (via replyToken) only when no Claude session is alive |
-| `mcp.mjs` | stdio MCP server — `get_line_messages`, `ack_line_messages`, `line_inbox_status`, `send_line_message`; writes a heartbeat file every 30 s so the receiver knows Claude is online |
+| `server.mjs` | Pi service on `127.0.0.1:18081`: verifies LINE signatures, deduplicates and stores events, exposes the token-authenticated inbox API, sends offline replies, and forwards URL messages to n8n. |
+| `mcp.mjs` | Local stdio MCP client: reads/acks the remote inbox, reports status, sends LINE messages, and refreshes the heartbeat. |
 
-## Run
+## Configuration
+
 ```bash
-cp line-inbox.env.example line-inbox.env   # fill CHANNEL_SECRET, CHANNEL_ACCESS_TOKEN, DESTINATION_USER_ID
-npm install
-node server.mjs &                           # or the systemd user unit below
-tailscale funnel --bg 18081                 # public https://<host>.<tailnet>.ts.net/webhook
-claude mcp add -s user line-inbox -- node $PWD/mcp.mjs
-```
-Set the funnel URL as Webhook URL in LINE Developers → Messaging API, enable *Use webhook*, Verify.
-Turn OFF *Auto-response messages* in LINE Official Account Manager (the receiver handles offline replies).
-
-systemd user unit (`~/.config/systemd/user/line-inbox.service`):
-```ini
-[Service]
-WorkingDirectory=%h/line-inbox
-ExecStart=node %h/line-inbox/server.mjs
-Restart=always
-[Install]
-WantedBy=default.target
+cp line-inbox.env.example line-inbox.env
+npm ci
 ```
 
-## Trade-off vs the Vercel/Supabase path
-Receives only while this machine is up (inbox is a JSONL file). The parent repo's
-webhook→Supabase design is the 24/7 upgrade; the MCP tool surface is the same, so
-Claude-side usage doesn't change when you migrate.
+The receiver requires `CHANNEL_SECRET` and `API_TOKEN`. Sending requires
+`CHANNEL_ACCESS_TOKEN`; the MCP client uses `INBOX_API_URL` and
+`INBOX_API_TOKEN`. Link-vault forwarding is optional and remains off when
+`N8N_FORWARD_URL` is empty.
+
+`line-inbox.env`, `inbox.jsonl`, `.claude-alive`, `node_modules`, and
+`*.local-notes` are ignored. Keep every real value and all message data out of
+Git.
+
+## Live topology
+
+- The Pi runs systemd user services `line-inbox` and `cloudflared-line`.
+- Cloudflare routes `line.draveniq.dev` to the receiver.
+- The laptop runs only `mcp.mjs`; it is no longer part of webhook ingress.
+- The Pi receiver forwards URL-bearing messages to Pi-local n8n.
+
+Use [PLAYBOOK.md](PLAYBOOK.md) for exact service, recovery, and link-vault
+operations. Do not re-enable the older Tailscale Funnel path while the
+Cloudflare path is healthy.
+
+## Safe checks
+
+```bash
+npm ci
+npm audit --omit=dev
+node --check server.mjs
+node --check mcp.mjs
+curl -fsS https://line.draveniq.dev/health
+```
+
+The health endpoint returns only `ok`. Do not place API tokens in command
+history, screenshots, issues, or committed scripts.

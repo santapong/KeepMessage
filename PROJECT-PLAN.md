@@ -1,5 +1,10 @@
 # Project Plan
 
+> **Historical:** this Vercel/Supabase plan is superseded by the maintained
+> Raspberry Pi implementation in `local/`. See `README.md` and
+> `MAINTENANCE.md` for current production reality. No phase below is an active
+> commitment.
+
 ## Goal
 
 Build a personal LINE inbox that Claude Desktop can read and reply to via MCP. Optimized for solo use, $0/month operating cost, and minimal moving parts.
